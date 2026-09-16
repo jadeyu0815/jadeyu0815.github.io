@@ -1,0 +1,82 @@
+name: Deploy portfolio to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Mirror portfolio
+        env:
+          ORIGIN: https://yangyuwen-creative-portfolio.sntis.chatgpt.site
+        run: |
+          set -euo pipefail
+          mkdir -p _site/assets
+          curl -fL --retry 3 "$ORIGIN/" -o _site/index.html
+          cp _site/index.html _site/404.html
+          grep -oE '/assets/[^" ]+\.(js|css)' _site/index.html | sort -u | while read -r path; do
+            mkdir -p "_site$(dirname "$path")"
+            curl -fL --retry 3 "$ORIGIN$path" -o "_site$path"
+          done
+          while read -r path; do
+            [ -z "$path" ] && continue
+            mkdir -p "_site$(dirname "$path")"
+            curl -fL --retry 3 "$ORIGIN$path" -o "_site$path"
+          done <<'FILES'
+          /images/sohu-geo-context.png
+          /images/smzdm-geo/optimized-article.png
+          /images/smzdm-geo/fact-table.png
+          /images/smzdm-geo/ai-inclusion.png
+          /images/storytelling/short-video-cover.png
+          /images/storytelling/four-crossings-cover.jpg
+          /images/storytelling/xunlu-field-story.jpg
+          /images/storytelling/audio-piece-cover.png
+          /images/storytelling/delicate-fan-documentary.jpg
+          /images/storytelling/xunlu-video-cover.png
+          /images/sohu-geo/ranking-trend.png
+          /images/sohu-geo/distribution-monitor.png
+          /images/sohu-geo/core-dashboard.png
+          /images/xing-gallery/color-series.jpg
+          /images/xing-gallery/city-atlas-brochure.png
+          /images/xing-gallery/blooming-invitation.png
+          /images/xing-gallery/wasteland-poster.png
+          /images/campaigns/ad-paper-plane-design.jpg
+          /images/campaigns/luck-extensions.jpg
+          /images/campaigns/ad-paper-plane-ip.jpg
+          /images/campaigns/luck-styling.jpg
+          /images/campaigns/ad-paper-plane-strategy.jpg
+          /images/campaigns/luck-hairpin-cover.jpg
+          /images/campaigns/ad-paper-plane-cover.jpg
+          /images/campaigns/luck-cityboat-map.jpg
+          /media/four-crossings.m4v
+          /media/short-video.mp4
+          /media/xunlu-documentary.m4v
+          /media/audio-piece.m4a
+          FILES
+          touch _site/.nojekyll
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
